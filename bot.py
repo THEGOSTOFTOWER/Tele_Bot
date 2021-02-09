@@ -15,34 +15,33 @@ st = []
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    global id
     global user_id
     global k
-    global mes_id
+    global id
     k = 0
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton(text='Переход в главное меню', callback_data='back'))
     bot.send_message(message.chat.id, 'Введите адрес стоянки машины (название улицы с большой буквы (без пр., ул. и т.д.))\n', reply_markup=markup)
-    id = message.chat.id
     user_id = message.from_user.id
+    id = message.chat.id
 
 
 @bot.message_handler(content_types=['text', 'integer'])
 def street(message):
     global name
     global k
-    global mes_id
     global st
     global user_id
+    global id
     if k == 0:
         name[0] = message.text
         markup = telebot.types.InlineKeyboardMarkup()
         btn1 = types.InlineKeyboardButton(text='На улице', callback_data='street')
-        btn2 = types.InlineKeyboardButton(text='Окло дома', callback_data='house1')
+        btn2 = types.InlineKeyboardButton(text='Около дома', callback_data='house1')
         btn3 = types.InlineKeyboardButton(text='Переход в главное меню', callback_data='back')
         markup.row(btn1, btn2)
         markup.row(btn3)
-        bot.send_message(message.chat.id, f'Улица: {name[0]}\n\nВы оставили машину на улице или около дома?\n', reply_markup=markup)
+        bot.send_message(id, f'Улица: {name[0]}\n\nВы оставили машину на улице или около дома?\n', reply_markup=markup)
     elif k == 1:
         name[0] = message.text
         markup = telebot.types.InlineKeyboardMarkup()
@@ -51,7 +50,7 @@ def street(message):
         btn3 = types.InlineKeyboardButton(text='Отмена', callback_data='back')
         markup.row(btn1, btn2)
         markup.row(btn3)
-        bot.send_message(message.chat.id, f'Улица: {name[0]}\n\nВы оставили машину на улице или около дома?\n', reply_markup=markup)
+        bot.send_message(id, f'Улица: {name[0]}\n\nВы оставили машину на улице или около дома?\n', reply_markup=markup)
     elif k == 2:
         name[1] = message.text
         st.append(name[0] + ' ' + name[1])
@@ -67,29 +66,22 @@ def street(message):
         markup.row(btn2)
         bot.send_message(id, 'Главное меню:\n', reply_markup=markup)
     elif k == 3:
-        try:
-            st.remove(message.text)
-            # db.del(user_id, message.text)
-            markup = telebot.types.InlineKeyboardMarkup()
-            btn1 = types.InlineKeyboardButton(text='Добавить стоянку', callback_data='add_stop')
-            btn2 = types.InlineKeyboardButton(text='Мои стоянки', callback_data='list_stops')
-            if len(st) != 0: # len(db.list(user_id)) != 0
-                btn3 = types.InlineKeyboardButton(text='Удалить стоянку', callback_data='del_stops')
-                markup.row(btn1, btn3)
-            else:
-                markup.row(btn1)
-            markup.row(btn2)
-            bot.send_message(id, 'Главное меню:\n', reply_markup=markup)
-        except Exception:
-            markup = telebot.types.InlineKeyboardMarkup()
-            markup.add(telebot.types.InlineKeyboardButton(text='Отмена', callback_data='back'))
-            bot.send_message(id, text='Напишите полный адрес улицы или дома(скопируйте из [Мои стоянки])')
+        st.remove(st[int(message.text) - 1])  # db.del(user_id, st[int(message.text) - 1])
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn1 = types.InlineKeyboardButton(text='Добавить стоянку', callback_data='add_stop')
+        btn2 = types.InlineKeyboardButton(text='Мои стоянки', callback_data='list_stops')
+        if len(st) != 0:  # len(db.list(user_id)) != 0
+            btn3 = types.InlineKeyboardButton(text='Удалить стоянку', callback_data='del_stops')
+            markup.row(btn1, btn3)
+        else:
+            markup.row(btn1)
+        markup.row(btn2)
+        bot.send_message(id, 'Главное меню:\n', reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
     global user_id
-    global id
     global name
     global k
     global st
@@ -134,7 +126,10 @@ def query_handler(call):
         elif call.data == 'del_stops':
             markup = telebot.types.InlineKeyboardMarkup()
             markup.add(telebot.types.InlineKeyboardButton(text='Отмена', callback_data='back'))
-            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Напишите полный адрес улицы или дома(скопируйте из [Мои стоянки])')
+            s = ''
+            for i in range(1, len(st) + 1):  # st=db.list(user_id)
+                s += str(i) + ') ' + st[i - 1] + ' \n'
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f'Выберете номер удаляемой стоянки:\n{s}', reply_markup=markup)
             k = 3
         elif call.data == 'back':
             markup = telebot.types.InlineKeyboardMarkup()
